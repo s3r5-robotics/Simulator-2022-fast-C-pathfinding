@@ -155,6 +155,7 @@ int main()
         .map = map
     };
 
+    // initialize the world with all walls defined at the top of the file
     init_world(wrapped_map);
     // Point start = {20, 20};
     // Point end = {60, 90};
