@@ -49,11 +49,34 @@ typedef struct
     Point* path;
 } Path;
 
+typedef struct __attribute__((__packed__)) {
+    uint32_t wall_up: 1;
+    uint32_t wall_down: 1;
+    uint32_t wall_right: 1;
+    uint32_t wall_left: 1;
+    uint32_t floor: 3;  // 0 = white (normal), 1 = black (hole), 2 = silver (checkpoint), 3 = blue (puddle/swamp)
+    uint32_t ramp: 2;  // 0 = no ramp, 1 = ramp up, 2 = ramp down
+    uint32_t obstacle: 1;  // Is there an obstacle on the tile preventing the robot to move further?
+    uint32_t debris: 1;  // Is there debris on the tile?
+    uint32_t deposited: 1;  // Has the robot detected a victim and deposited on the tile?
+    uint32_t visited: 1;  // Has the robot visited the tile?
+    uint32_t traversable: 1;  // Can the robot physically move onto that tile?
+    // 👇 Pathfinding variables, ignore these! 👇
+    int g: 8;
+    int f: 8;
+    int h: 8;
+    uint32_t closed: 1;
+    uint32_t opened: 1;
+    uint32_t walkable: 1;
+    int x: 12;
+    int y: 12;
+} TilePhysical;
+
 typedef struct
 {
     unsigned int width;
     unsigned int height;
-    Tile** map;
+    TilePhysical** map;
 } Map;
 
 int get_neighbours(Map map, Node_s node, Node_s *out)
@@ -61,7 +84,7 @@ int get_neighbours(Map map, Node_s node, Node_s *out)
     int count = 0;
     int px = node.x + 1, mx = node.x - 1, py = node.y + 1, my = node.y - 1;
 
-    if (!(my < 0 || mx < 0) && map.map[my][mx].walkable == true) // x, y, 0, 0, 0
+    /*if (!(my < 0 || mx < 0) && map.map[my][mx].walkable == true) // x, y, 0, 0, 0
     {
         out[count].parent = NULL;
         out[count].f = map.map[my][mx].f;
@@ -96,8 +119,8 @@ int get_neighbours(Map map, Node_s node, Node_s *out)
         out[count].g = map.map[py][px].g;
         out[count].y = py;
         out[count++].x = px;
-    }
-    if (!(map.width < px) && map.map[node.y][px].walkable == true)
+    }*/
+    if (!(map.width < px) && map.map[node.y][px].wall_right && map.map[node.y][px].traversable)
     {
         out[count].parent = NULL;
         out[count].f = map.map[node.y][px].f;
@@ -106,7 +129,7 @@ int get_neighbours(Map map, Node_s node, Node_s *out)
         out[count].y = node.y;
         out[count++].x = px;
     }
-    if (!(my < 0) && map.map[my][node.x].walkable == true)
+    if (!(my < 0) && map.map[my][node.x].wall_up && map.map[my][node.x].traversable)
     {
         out[count].parent = NULL;
         out[count].f = map.map[my][node.x].f;
@@ -115,7 +138,15 @@ int get_neighbours(Map map, Node_s node, Node_s *out)
         out[count].y = my;
         out[count++].x = node.x;
     }
-    if (!(mx < 0) && map.map[node.y][mx].walkable == true)
+    {
+        out[count].parent = NULL;
+        out[count].f = map.map[my][node.x].f;
+        out[count].h = map.map[my][node.x].h;
+        out[count].g = map.map[my][node.x].g;
+        out[count].y = my;
+        out[count++].x = node.x;
+    }
+    if (!(mx < 0) && map.map[node.y][mx].wall_left && map.map[node.y][mx].traversable)
     {
         out[count].parent = NULL;
         out[count].f = map.map[node.y][mx].f;
@@ -124,7 +155,7 @@ int get_neighbours(Map map, Node_s node, Node_s *out)
         out[count].y = node.y;
         out[count++].x = mx;
     }
-    if (!(map.height < py) && map.map[py][node.x].walkable == true)
+    if (!(map.height < py) && map.map[py][node.x].wall_down && map.map[py][node.x].traversable)
     {
         out[count].parent = NULL;
         out[count].f = map.map[py][node.x].f;
